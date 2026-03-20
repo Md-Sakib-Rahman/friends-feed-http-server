@@ -18,6 +18,11 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+
+// Health Check Endpoint 
+app.get("/", (req, res) => {
+  res.send("Friends Feed API is Running... 🚀");
+});
 // Routes
 app.use('/api/auth', authRoutes);  // Login, Register, Refresh, Logout
 app.use('/api/posts', postRoutes); // Feed, Create/Edit/Delete, Likes, Comments
