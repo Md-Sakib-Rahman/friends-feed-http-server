@@ -1,0 +1,192 @@
+const Post = require("../models/Post");
+const { postSchema } = require("../utils/postValidators");
+const Comment = require("../models/Comment.js");
+
+exports.createPost = async (req, res) => {
+  try {
+    const validatedData = postSchema.parse(req.body);
+    const newPost = new Post({
+      author: req.user.id, // ✅ Fixed: .id added
+      content: validatedData.content,
+      image: validatedData.image || "",
+    });
+    await newPost.save();
+    
+    const populatedPost = await Post.findById(newPost._id).populate(
+      "author",
+      "name username profilePicture"
+    );
+    res.status(201).json(populatedPost);
+  } catch (err) {
+    console.error("Create Post Error:", err);
+    if (err.name === "ZodError") return res.status(400).json({ errors: err.errors });
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+exports.getPosts = async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 10;
+    const cursor = req.query.cursor;
+    let query = {};
+    if (cursor && cursor !== "null" && cursor !== "undefined") {
+      query._id = { $lt: cursor };
+    }
+    const posts = await Post.find(query)
+      .sort({ _id: -1 })
+      .limit(limit)
+      .populate("author", "name username profilePicture");
+
+    const nextCursor = posts.length === limit ? posts[posts.length - 1]._id : null;
+    res.json({ posts, nextCursor });
+  } catch (err) {
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+exports.toggleLike = async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.id);
+    if (!post) return res.status(404).json({ message: "Post not found" });
+
+    // ✅ Fixed: Changed req.user to req.user.id
+    const isLiked = post.likes.includes(req.user.id);
+
+    if (isLiked) {
+      post.likes.pull(req.user.id);
+    } else {
+      post.likes.addToSet(req.user.id);
+    }
+
+    await post.save();
+    res.json({ likes: post.likes, isLiked: !isLiked });
+  } catch (error) {
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+exports.addComment = async (req, res) => {
+  try {
+    const { content } = req.body;
+    if (!content) return res.status(400).json({ message: "Comment cannot be empty" });
+
+    const newComment = new Comment({
+      post: req.params.id,
+      author: req.user.id, // ✅ Fixed: .id added
+      content,
+    });
+
+    await newComment.save();
+    await Post.findByIdAndUpdate(req.params.id, { $inc: { commentCount: 1 } });
+
+    const populatedComment = await newComment.populate("author", "name username profilePicture");
+    res.status(201).json(populatedComment);
+  } catch (error) {
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+exports.updatePost = async (req, res) => {
+  try {
+    const { content, image } = postSchema.parse(req.body);
+    const post = await Post.findById(req.params.id);
+
+    if (!post) return res.status(404).json({ message: "Post not found" });
+
+    // ✅ Fixed: Changed req.user to req.user.id
+    if (post.author.toString() !== req.user.id.toString()) {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    post.content = content || post.content;
+    post.image = image || post.image;
+    await post.save();
+
+    const populatedPost = await post.populate("author", "name username profilePicture");
+    res.json(populatedPost);
+  } catch (error) {
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+exports.deletePost = async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.id);
+    if (!post) return res.status(404).json({ message: "Post not found" });
+
+    // ✅ Fixed: Changed req.user to req.user.id
+    if (post.author.toString() !== req.user.id.toString()) {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    await Post.findByIdAndDelete(req.params.id);
+    await Comment.deleteMany({ post: req.params.id });
+
+    res.json({ message: "Post deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+exports.updateComment = async (req, res) => {
+  try {
+    const { content } = req.body;
+    const comment = await Comment.findById(req.params.commentId);
+    if (!comment) return res.status(404).json({ message: "Comment not found" });
+
+    // ✅ Fixed: Changed req.user to req.user.id
+    if (comment.author.toString() !== req.user.id.toString()) {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    comment.content = content;
+    await comment.save();
+    const updatedComment = await comment.populate("author", "name username profilePicture");
+    res.json(updatedComment);
+  } catch (error) {
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+exports.deleteComment = async (req, res) => {
+  try {
+    const comment = await Comment.findById(req.params.commentId);
+    if (!comment) return res.status(404).json({ message: "Comment not found" });
+
+    // ✅ Fixed: Changed req.user to req.user.id
+    if (comment.author.toString() !== req.user.id.toString()) {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    const postId = comment.post;
+    await comment.deleteOne();
+    await Post.findByIdAndUpdate(postId, { $inc: { commentCount: -1 } });
+
+    res.json({ message: "Comment deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+exports.getUserPosts = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const limit = parseInt(req.query.limit) || 10;
+    const cursor = req.query.cursor;
+    
+    let query = { author: userId };
+    if (cursor && cursor !== "null" && cursor !== "undefined") {
+      query._id = { $lt: cursor };
+    }
+
+    const posts = await Post.find(query)
+      .sort({ _id: -1 })
+      .limit(limit)
+      .populate("author", "name username profilePicture");
+
+    const nextCursor = posts.length === limit ? posts[posts.length - 1]._id : null;
+    res.status(200).json({ success: true, posts, nextCursor });
+  } catch (err) {
+    res.status(500).json({ message: "Server Error" });
+  }
+};

@@ -1,0 +1,32 @@
+const express = require('express');
+const cors = require('cors');
+const authRoutes = require('./routes/authRoutes');
+const postRoutes = require('./routes/postRoutes');
+const userRoutes = require('./routes/userRoutes');
+const dotenv = require('dotenv');
+const cookieParser = require('cookie-parser');
+dotenv.config();
+ 
+
+const app = express();
+
+// Middleware
+app.use(cors({
+  origin: process.env.CLIENT_URL || "http://localhost:5173",
+  credentials: true
+}));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
+// Routes
+app.use('/api/auth', authRoutes);  // Login, Register, Refresh, Logout
+app.use('/api/posts', postRoutes); // Feed, Create/Edit/Delete, Likes, Comments
+app.use('/api/users', userRoutes); // Search, Friend Requests, Pending List
+
+// --- Global Error Handler ---
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ message: "Something went wrong on the server!" });
+});
+
+module.exports = app;
