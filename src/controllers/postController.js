@@ -6,7 +6,7 @@ exports.createPost = async (req, res) => {
   try {
     const validatedData = postSchema.parse(req.body);
     const newPost = new Post({
-      author: req.user.id, // ✅ Fixed: .id added
+      author: req.user.id,  
       content: validatedData.content,
       image: validatedData.image || "",
     });
@@ -49,7 +49,6 @@ exports.toggleLike = async (req, res) => {
     const post = await Post.findById(req.params.id);
     if (!post) return res.status(404).json({ message: "Post not found" });
 
-    // ✅ Fixed: Changed req.user to req.user.id
     const isLiked = post.likes.includes(req.user.id);
 
     if (isLiked) {
@@ -93,7 +92,6 @@ exports.updatePost = async (req, res) => {
 
     if (!post) return res.status(404).json({ message: "Post not found" });
 
-    // ✅ Fixed: Changed req.user to req.user.id
     if (post.author.toString() !== req.user.id.toString()) {
       return res.status(403).json({ message: "Unauthorized" });
     }
@@ -114,7 +112,6 @@ exports.deletePost = async (req, res) => {
     const post = await Post.findById(req.params.id);
     if (!post) return res.status(404).json({ message: "Post not found" });
 
-    // ✅ Fixed: Changed req.user to req.user.id
     if (post.author.toString() !== req.user.id.toString()) {
       return res.status(403).json({ message: "Unauthorized" });
     }
@@ -153,7 +150,6 @@ exports.deleteComment = async (req, res) => {
     const comment = await Comment.findById(req.params.commentId);
     if (!comment) return res.status(404).json({ message: "Comment not found" });
 
-    // ✅ Fixed: Changed req.user to req.user.id
     if (comment.author.toString() !== req.user.id.toString()) {
       return res.status(403).json({ message: "Unauthorized" });
     }

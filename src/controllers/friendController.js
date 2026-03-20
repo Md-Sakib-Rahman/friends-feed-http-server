@@ -34,7 +34,7 @@ exports.sendRequest = async (req, res) => {
 exports.respondToRequest = async (req, res) => {
   try {
     const { requestId } = req.params;
-    const { status } = req.body; // 'accepted' or 'rejected'
+    const { status } = req.body;  
 
     const request = await Friendship.findById(requestId);
     if (!request || request.receiver.toString() !== req.user) {
@@ -49,7 +49,6 @@ exports.respondToRequest = async (req, res) => {
       await User.findByIdAndUpdate(request.sender, { $addToSet: { friends: request.receiver } });
       await User.findByIdAndUpdate(request.receiver, { $addToSet: { friends: request.sender } });
     } else {
-      // If rejected, we just delete the friendship document
       await request.deleteOne();
     }
 

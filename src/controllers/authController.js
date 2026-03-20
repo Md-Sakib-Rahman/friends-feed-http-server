@@ -63,14 +63,14 @@ exports.login = async (req, res) => {
       accessToken,
       user: {
         id: user._id,
-        _id: user._id, // ফ্রন্টএন্ডে অনেক সময় _id লাগে, তাই এটিও রাখা নিরাপদ
+        _id: user._id,  
         name: user.name,
         username: user.username,
         email: user.email,
         profilePicture: user?.profilePicture,
         bio: user.bio || "",
-        about: user.about || "", // নতুন
-        friends: user.friends || [], // নতুন
+        about: user.about || "",  
+        friends: user.friends || [],  
       },
     });
   } catch (error) {
