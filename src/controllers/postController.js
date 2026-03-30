@@ -1,7 +1,8 @@
 const Post = require("../models/Post");
 const { postSchema } = require("../utils/postValidators");
 const Comment = require("../models/Comment.js");
-
+const Notification = require('../models/Notification');
+const publishNotification = require('../utils/socketPublisher');
 exports.createPost = async (req, res) => {
   try {
     const validatedData = postSchema.parse(req.body);
@@ -44,17 +45,42 @@ exports.getPosts = async (req, res) => {
   }
 };
 
+
 exports.toggleLike = async (req, res) => {
   try {
     const post = await Post.findById(req.params.id);
-    if (!post) return res.status(404).json({ message: "Post not found" });
+    const senderId = req.user.id;
+    const receiverId = post.author;
 
-    const isLiked = post.likes.includes(req.user.id);
+    const isLiked = post.likes.includes(senderId);
 
     if (isLiked) {
-      post.likes.pull(req.user.id);
+      post.likes.pull(senderId);
     } else {
-      post.likes.addToSet(req.user.id);
+      post.likes.addToSet(senderId);
+
+      if (receiverId.toString() !== senderId.toString()) {
+        await Notification.findOneAndUpdate(
+          { 
+            receiver: receiverId, 
+            post: post._id, 
+            type: 'post_like', 
+            isRead: false 
+          },
+          { 
+            $addToSet: { senders: senderId },
+            $inc: { count: 1 },
+            $set: { updatedAt: Date.now() }
+          },
+          { upsert: true, new: true }
+        );
+
+        publishNotification(receiverId, "NEW_NOTIFICATION", {
+          type: 'post_like',
+          senderName: req.user.name,
+          postId: post._id
+        });
+      }
     }
 
     await post.save();
@@ -63,24 +89,61 @@ exports.toggleLike = async (req, res) => {
     res.status(500).json({ message: "Server Error" });
   }
 };
-
 exports.addComment = async (req, res) => {
   try {
     const { content } = req.body;
+    const postId = req.params.id;
+    const senderId = req.user.id;
+
     if (!content) return res.status(400).json({ message: "Comment cannot be empty" });
 
+    const post = await Post.findById(postId);
+    if (!post) return res.status(404).json({ message: "Post not found" });
+
     const newComment = new Comment({
-      post: req.params.id,
-      author: req.user.id, // ✅ Fixed: .id added
+      post: postId,
+      author: senderId,
       content,
     });
 
     await newComment.save();
-    await Post.findByIdAndUpdate(req.params.id, { $inc: { commentCount: 1 } });
+    await Post.findByIdAndUpdate(postId, { $inc: { commentCount: 1 } });
+
+    if (post.author.toString() !== senderId.toString()) {
+      const receiverId = post.author;
+
+      await Notification.findOneAndUpdate(
+        {
+          receiver: receiverId,
+          post: postId,
+          type: 'post_comment',
+          isRead: false
+        },
+        {
+          $addToSet: { senders: senderId },
+          $inc: { count: 1 },
+          $set: {
+            content: content.substring(0, 50),
+            updatedAt: Date.now()
+          }
+        },
+        { upsert: true, new: true }
+      );
+
+      publishNotification(receiverId, "NEW_NOTIFICATION", {
+        type: 'post_comment',
+        senderName: req.user.name,
+        senderPic: req.user.profilePicture,
+        postId: postId,
+        commentText: content,
+        createdAt: new Date()
+      });
+    }
 
     const populatedComment = await newComment.populate("author", "name username profilePicture");
     res.status(201).json(populatedComment);
   } catch (error) {
+    console.error("Add Comment Error:", error);
     res.status(500).json({ message: "Server Error" });
   }
 };

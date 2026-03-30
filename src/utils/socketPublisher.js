@@ -1,4 +1,5 @@
 const Redis = require("ioredis");
+require('dotenv').config();
 const redisPublisher = new Redis(process.env.REDIS_URL);
 
 const publishNotification = (toUserId, type, payload) => {
