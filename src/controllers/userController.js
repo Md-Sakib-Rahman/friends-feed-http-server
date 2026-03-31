@@ -1,5 +1,5 @@
 const User = require('../models/User');
-
+const Friendship = require("../models/Friendship");
 exports.searchUsers = async (req, res) => {
   try {
     const { query } = req.query;
@@ -79,6 +79,27 @@ exports.getMe = async (req, res) => {
 
     res.json({ user });
   } catch (error) {
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+exports.getFriendsList = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const friendships = await Friendship.find({
+      $or: [
+        { sender: userId, status: "accepted" },
+        { receiver: userId, status: "accepted" },
+      ],
+    }).populate("sender receiver", "name username profilePicture");
+
+    const friends = friendships.map((f) => {
+      return f.sender._id.toString() === userId.toString() ? f.receiver : f.sender;
+    });
+
+    res.json(friends);
+  } catch (error) {
+    console.error("Get Friends List Error:", error);
     res.status(500).json({ message: "Server Error" });
   }
 };

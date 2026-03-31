@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/authMiddleware');
-const { searchUsers, updateProfile, getUserById, getMe } = require('../controllers/userController');
+const { searchUsers, updateProfile, getUserById, getMe, getFriendsList } = require('../controllers/userController');
 const { sendRequest, respondToRequest, getPendingRequests, getSentRequests, cancelRequest, unfriendUser } = require('../controllers/friendController');
 
 
@@ -18,6 +18,6 @@ router.put('/request/respond/:requestId', auth, respondToRequest);
 router.delete('/request/cancel/:requestId', auth, cancelRequest);
 router.post('/unfriend/:userId', auth, unfriendUser);
 router.get("/:userId", auth, getUserById);
-
+router.get("/friends/list", auth, getFriendsList);
 
 module.exports = router;

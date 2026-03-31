@@ -1,8 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const { createPost, getPosts, updatePost, deletePost, toggleLike, addComment, updateComment, deleteComment, getUserPosts } = require('../controllers/postController');
+const { createPost, getPosts, updatePost, deletePost, toggleLike, addComment, updateComment, deleteComment, getUserPosts, getPostById } = require('../controllers/postController');
 const auth = require('../middleware/authMiddleware');
 const Comment = require('../models/Comment');
+
+console.log("-----------------------------------");
+console.log("getPostById:", typeof getPostById);
+console.log("getUserPosts:", typeof getUserPosts);
+console.log("-----------------------------------");
 
 //  POSTS ===============
 router.get('/',auth,  getPosts);
@@ -13,7 +18,6 @@ router.put('/:id', auth, updatePost);
 
 router.delete('/:id', auth, deletePost);
 
-//  like and Comments ===============
 router.put('/:id/like', auth, toggleLike);
 
 router.post('/:id/comments', auth, addComment);
@@ -38,5 +42,7 @@ router.put('/comment/:commentId', auth, updateComment);
 router.delete('/comment/:commentId', auth, deleteComment);
 
 router.get("/user/:userId", auth, getUserPosts);
+
+router.get('/:id', auth, getPostById);
 
 module.exports = router;

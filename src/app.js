@@ -4,6 +4,7 @@ const authRoutes = require('./routes/authRoutes');
 const postRoutes = require('./routes/postRoutes');
 const userRoutes = require('./routes/userRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
+const messageRoutes = require('./routes/messageRoutes');
 const dotenv = require('dotenv');
 const cookieParser = require('cookie-parser');
 dotenv.config();
@@ -36,6 +37,7 @@ app.use('/api/auth', authRoutes);  // Login, Register, Refresh, Logout
 app.use('/api/posts', postRoutes); // Feed, Create/Edit/Delete, Likes, Comments
 app.use('/api/users', userRoutes); // Search, Friend Requests, Pending List
 app.use('/api/notifications', notificationRoutes); 
+app.use('/api/messages', messageRoutes);
 // --- Global Error Handler ---
 app.use((err, req, res, next) => {
   console.error(err.stack);

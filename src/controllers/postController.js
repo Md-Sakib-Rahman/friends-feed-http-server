@@ -194,7 +194,6 @@ exports.updateComment = async (req, res) => {
     const comment = await Comment.findById(req.params.commentId);
     if (!comment) return res.status(404).json({ message: "Comment not found" });
 
-    // ✅ Fixed: Changed req.user to req.user.id
     if (comment.author.toString() !== req.user.id.toString()) {
       return res.status(403).json({ message: "Unauthorized" });
     }
@@ -247,5 +246,34 @@ exports.getUserPosts = async (req, res) => {
     res.status(200).json({ success: true, posts, nextCursor });
   } catch (err) {
     res.status(500).json({ message: "Server Error" });
+  }
+};
+
+exports.getPostById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ message: "Invalid Post ID" });
+    }
+
+    const post = await Post.findById(id)
+      .populate("author", "name username profilePicture");
+
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    const comments = await Comment.find({ post: id })
+      .populate("author", "name username profilePicture")
+      .sort({ createdAt: -1 });
+
+    res.json({
+      ...post._doc,
+      comments: comments
+    });
+  } catch (error) {
+    console.error("GET_POST_BY_ID_ERROR:", error);  
+    res.status(500).json({ message: "Server Error", error: error.message });
   }
 };
