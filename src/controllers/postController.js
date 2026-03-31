@@ -6,9 +6,14 @@ const publishNotification = require('../utils/socketPublisher');
 exports.createPost = async (req, res) => {
   try {
     const validatedData = postSchema.parse(req.body);
+    // const newPost = new Post({
+    //   author: req.user.id,  
+    //   content: validatedData.content,
+    //   image: validatedData.image || "",
+    // });
     const newPost = new Post({
       author: req.user.id,  
-      content: validatedData.content,
+      content: validatedData.content || "",  
       image: validatedData.image || "",
     });
     await newPost.save();
